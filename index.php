@@ -177,20 +177,15 @@ function isValidPdf(string $tmpPath)
 }
 
 if (isset($_GET['DataE'])) {
-
-    // if ($_GET['token'] <> $_SESSION['token']) {
-    //     session_unset();     // unset $_SESSION variable for the run-time 
-    // session_destroy();   // destroy session data in storage
-    //     session_start();
-    // }
-
     $JsonText = decryptIt($_GET['DataE']);
     $JSOnArr = json_decode($JsonText, true);
     $now = time();
 
     // ตรวจสอบ session timeout (1 ชั่วโมง = 3600 วินาที)
     $dataTime = (is_array($JSOnArr) && isset($JSOnArr['date_U'])) ? (int)$JSOnArr['date_U'] : 0;
-    if (($now - $dataTime) > 21600) {
+    $fromApp = (is_array($JSOnArr) && isset($JSOnArr['FromApp'])) ? trim((string)$JSOnArr['FromApp']) : "";
+    $ttl = (!empty($fromApp) || $fromApp === 'Noti') ? (7 * 24 * 60 * 60) : 21600;
+    if ($dataTime <= 0 || ($now - $dataTime) > $ttl) {
         session_unset();
         session_destroy();
 
@@ -221,30 +216,6 @@ if (isset($_GET['DataE'])) {
         ";
         exit();
     }
-
-    // if ($JSOnArr['auth_user_name'] != '660500122' && $JSOnArr['auth_user_name'] != '660700186' && $JSOnArr['auth_user_name'] != '670100002' && $JSOnArr['auth_user_name'] != '500811071') {
-    //     echo "กำลังแก้ไขข้อมูล";
-    //     exit();
-    // }
-
-    // $_SESSION['token'] = $_GET['token'];
-    // $token = $_GET['token'];
-    // $post    =    ['token' => $token];
-    // $uri    =    "https://innovation.asefa.co.th/applications/token/authtoken";
-
-    // $ch = curl_init();
-    // curl_setopt($ch, CURLOPT_URL, $uri);
-    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    // curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    // curl_setopt($ch, CURLOPT_POST, 1);
-    // curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-    // curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    // $result = curl_exec($ch);
-    // curl_close($ch);
-
-    // $decode_result = json_decode($result, true);
-    // $Users_Username = $decode_result['DATA']['Users_Username'];
     $Users_Username = $JSOnArr['auth_user_name'];
 
 
@@ -277,10 +248,6 @@ if (isset($_GET['DataE'])) {
         $_SESSION['DivisionNameTH'] = $empdata[0]->DivisionNameTH;
         $_SESSION['DataE'] = $_GET['DataE'];
     }
-
-    // echo "<pre>";
-    // print_r($_SESSION);
-    // echo "</pre>";
 } else if (isset($_SESSION['ChangeRequest_login'])) {
 }
 
@@ -1401,13 +1368,13 @@ $route->add('/insertcr', function () { {
 
                 if ($datetype == 'New') {
                     if ($allSuccess) {
-                        // $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $CRNo . ")";
-                        // $message = mydata($user)['FullName'] . "\nสร้างเอกสารขอเปลี่ยนแปลง" . "\nเมื่อ " . date("Y-m-d H:i:s");
-                        // foreach ($data_admin as $key => $usernoti) {
-                        //     $token_noti = mydata($usernoti)['TokenMD5'];
-                        //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token_noti . "&CR_no=" . $CRNo;
-                        //     Notify($titelnoti, $message, $usernoti, $url);
-                        // }
+                        $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $CRNo . ")";
+                        $message = mydata($user)['FullName'] . "\nสร้างเอกสารขอเปลี่ยนแปลง" . "\nเมื่อ " . date("Y-m-d H:i:s");
+                        foreach ($data_admin as $key => $usernoti) {
+                            $DataE = encryptIt(json_encode(["auth_user_name" => $usernoti, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                            $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DateE=" . $DataE . "&CR_no=" . $CRNo;
+                            Notify($titelnoti, $message, $usernoti, $url);
+                        }
                         echo json_encode(['status' => true], true);
                     } else {
                         echo json_encode(['status' => false], true);
@@ -1497,12 +1464,12 @@ $route->add('/changestatus', function () { {
 
             $query  =    sqlsrv_query($konnext_DB64, $sqll);
 
-            // $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $cr_no . ")";
+            $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $cr_no . ")";
 
-            // $token = mydata($approveSelect_1)['TokenMD5'];
-            // $message = 'เลขที่เอกสาร ' . $cr_no . "\nส่งคำขอทบทวน" . "\n**กรุณาตรวจสอบอีกครั้ง**";
-            // $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
-            // Notify($titelnoti, $message, $approveSelect_1, $url);
+            $DataE = encryptIt(json_encode(["auth_user_name" => $approveSelect_1, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+            $message = 'เลขที่เอกสาร ' . $cr_no . "\nส่งคำขอทบทวน" . "\n**กรุณาตรวจสอบอีกครั้ง**";
+            $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+            Notify($titelnoti, $message, $approveSelect_1, $url);
         }
 
         if ($status == 'Close') {
@@ -1575,12 +1542,12 @@ $route->add('/changestatus', function () { {
 
             if ($query) {
 
-                // foreach ($noti_close_user as $key => $usernoti) {
-                //     $token = mydata($usernoti)['TokenMD5'];
-                //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
+                foreach ($noti_close_user as $key => $usernoti) {
+                    $DataE = encryptIt(json_encode(["auth_user_name" => $usernoti, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                    $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
 
-                //     Notify($titelnoti, $message, $usernoti, $url);
-                // }
+                    Notify($titelnoti, $message, $usernoti, $url);
+                }
 
                 echo json_encode(['status' => true, 'status_cr' => $status, 'doc_no' => $DocNo, 'cr_approve' => $cr_approve], true);
             } else {
@@ -1609,28 +1576,28 @@ $route->add('/changestatus', function () { {
 
                 if ($cr_approve == '1') {
                     Update_Status_Approve($cr_no, $approveSelect_1, 'Approve_1', $status_approve);
-                    //     $token = mydata($approveSelect_2)['TokenMD5'];
-                    //     $message = 'เลขที่เอกสาร ' . $cr_no . "\nเทคนิคได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้ง**";
-                    //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
-                    //     Notify($titelnoti, $message, $approveSelect_2, $url);
+                    $DataE = encryptIt(json_encode(["auth_user_name" => $approveSelect_2, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                    $message = 'เลขที่เอกสาร ' . $cr_no . "\nเทคนิคได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้ง**";
+                    $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+                    Notify($titelnoti, $message, $approveSelect_2, $url);
                 } elseif ($cr_approve == '2') {
                     Update_Status_Approve($cr_no, $approveSelect_2, 'Approve_2', $status_approve);
-                    //     $token = mydata($approveSelect_3)['TokenMD5'];
-                    //     $message = 'เลขที่เอกสาร ' . $cr_no . "\nผจก.เทคนิคได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้งก่อนอนุมัติ**";
-                    //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
-                    //     Notify($titelnoti, $message, $approveSelect_3, $url);
+                    $DataE = encryptIt(json_encode(["auth_user_name" => $approveSelect_3, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                    $message = 'เลขที่เอกสาร ' . $cr_no . "\nผจก.เทคนิคได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้งก่อนอนุมัติ**";
+                    $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+                    Notify($titelnoti, $message, $approveSelect_3, $url);
                 } elseif ($cr_approve == '3') {
                     Update_Status_Approve($cr_no, $approveSelect_3, 'Approve_3', $status_approve);
-                    //     $token = mydata($approveSelect_4)['TokenMD5'];
-                    //     $message = 'เลขที่เอกสาร ' . $cr_no . "\nขายได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้งก่อนอนุมัติ**";
-                    //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
-                    //     Notify($titelnoti, $message, $approveSelect_4, $url);
+                    $DataE = encryptIt(json_encode(["auth_user_name" => $approveSelect_4, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                    $message = 'เลขที่เอกสาร ' . $cr_no . "\nขายได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้งก่อนอนุมัติ**";
+                    $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+                    Notify($titelnoti, $message, $approveSelect_4, $url);
                 } elseif ($cr_approve == '4' && ($approveSelect_5 != '-' || $approveSelect_5 != '')) {
                     Update_Status_Approve($cr_no, $approveSelect_4, 'Approve_4', $status_approve);
-                    //     $token = mydata($approveSelect_5)['TokenMD5'];
-                    //     $message = 'เลขที่เอกสาร ' . $cr_no . "\nผจก.ขายได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้งก่อนอนุมัติ**";
-                    //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
-                    //     Notify($titelnoti, $message, $approveSelect_5, $url);
+                    $DataE = encryptIt(json_encode(["auth_user_name" => $approveSelect_5, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                    $message = 'เลขที่เอกสาร ' . $cr_no . "\nผจก.ขายได้ทำการตรวจสอบเรียบร้อยแล้ว" . "\n**กรุณาตรวจสอบอีกครั้งก่อนอนุมัติ**";
+                    $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+                    Notify($titelnoti, $message, $approveSelect_5, $url);
                 }
                 echo json_encode(['status' => true, 'status_cr' => $status, 'cr_approve' => $cr_approve], true);
             } else {
@@ -1720,12 +1687,12 @@ $route->add('/editdata', function () { {
 
             $query  =    sqlsrv_query($konnext_DB64, $sqll);
 
-            // $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $cr_no . ")";
+            $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $cr_no . ")";
 
-            // $token = mydata($approveSelect_1 == '' || $approveSelect_1 == '-' ? $approveSelect_3 : $approveSelect_1)['TokenMD5'];
-            // $message = 'เลขที่เอกสาร ' . $cr_no . "\nส่งคำขอทบทวน" . "\n**กรุณาตรวจสอบอีกครั้ง**";
-            // $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token . "&CR_no=" . $cr_no;
-            // Notify($titelnoti, $message, $approveSelect_1, $url);
+            $DataE = encryptIt(json_encode(["auth_user_name" => $approveSelect_1 == '' || $approveSelect_1 == '-' ? $approveSelect_3 : $approveSelect_1, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+            $message = 'เลขที่เอกสาร ' . $cr_no . "\nส่งคำขอทบทวน" . "\n**กรุณาตรวจสอบอีกครั้ง**";
+            $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+            Notify($titelnoti, $message, $approveSelect_1, $url);
         }
 
         $sql = "
@@ -1839,13 +1806,13 @@ $route->add('/editdata', function () { {
                 if ($allSuccess) {
                     if ($status == 'New') {
                         if ($allSuccess) {
-                            // $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $cr_no . ")";
-                            // $message = mydata($user)['FullName'] . "\nสร้างเอกสารขอเปลี่ยนแปลง" . "\nเมื่อ " . date("Y-m-d H:i:s");
-                            // foreach ($data_admin as $key => $usernoti) {
-                            //     $token_noti = mydata($usernoti)['TokenMD5'];
-                            //     $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?token=" . $token_noti . "&CR_no=" . $cr_no;
-                            //     Notify($titelnoti, $message, $usernoti, $url);
-                            // }
+                            $titelnoti = "แจ้งเตือนขอเปลี่ยนแปลง (" . $cr_no . ")";
+                            $message = mydata($user)['FullName'] . "\nสร้างเอกสารขอเปลี่ยนแปลง" . "\nเมื่อ " . date("Y-m-d H:i:s");
+                            foreach ($data_admin as $key => $usernoti) {
+                                $DataE = encryptIt(json_encode(["auth_user_name" => $usernoti, "FromApp" => "Noti", "date_U" => time()], JSON_UNESCAPED_UNICODE));
+                                $url = "https://innovation.asefa.co.th/ChangeRequestForm/ViewForm?DataE=" . $DataE . "&CR_no=" . $cr_no;
+                                Notify($titelnoti, $message, $usernoti, $url);
+                            }
                             echo json_encode(['status' => true], true);
                         } else {
                             echo json_encode(['status' => false], true);
