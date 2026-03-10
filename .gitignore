@@ -1,0 +1,8 @@
+assets/
+icon/
+config/connection.php
+config/base.php
+*.log
+sn.log
+.DS_Store
+.env
